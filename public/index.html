@@ -133,7 +133,7 @@
   const batteryLevel = document.getElementById('batteryLevel');
   const alertContainer = document.getElementById('alertContainer');
 
-  const socket = new WebSocket('ws://localhost:3000');
+  const socket = new WebSocket('ws://gasdetector.onrender.com/');
 
  socket.onmessage = (event) => {
   const data = JSON.parse(event.data);

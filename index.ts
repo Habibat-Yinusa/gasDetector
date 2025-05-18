@@ -66,6 +66,7 @@ const updateHandler: express.RequestHandler = (req, res) => {
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       client.send(JSON.stringify(latestData));
+      console.log("Broadcasting:", latestData)
     }
   });
 
@@ -74,6 +75,7 @@ const updateHandler: express.RequestHandler = (req, res) => {
 
 app.post('/', updateHandler);
 
-server.listen(3000, () => {
-  console.log('Server running on http://localhost:3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
