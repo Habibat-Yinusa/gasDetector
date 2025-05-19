@@ -23,12 +23,12 @@ let latestData: SensorData = {
   weight: 0,
   percentage: 0,
   battery: 0,
-  status: 'Normal', 
-  batteryStatus: 'Normal',
+  status: '', 
+  batteryStatus: '',
 };
 
 const computeStatus = (percentage: number): string => {
-  return percentage < 15 ? 'Critical' : percentage < 30 ? 'Low' : 'Normal';
+  return percentage < 15 ? 'Critical' : percentage < 30 ? 'Low' : 'Good';
 }
 
 wss.on('connection', (ws: WebSocket) => {

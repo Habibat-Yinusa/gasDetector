@@ -45,6 +45,55 @@
             70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
             100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
         }
+
+        .status-pill {
+            transition: all 0.3s ease;
+        }
+
+        .alert-slide-in {
+            animation: slideInFromTop 0.5s ease-out;
+        }
+
+        .alert-slide-out {
+            animation: slideOutToTop 0.3s ease-in forwards;
+        }
+
+        @keyframes slideInFromTop {
+            from {
+                opacity: 0;
+                transform: translateY(-100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideOutToTop {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-100%);
+            }
+        }
+
+        .alert-warning {
+            box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+        }
+
+        .alert-critical {
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            animation: pulse-alert 2s infinite;
+        }
+
+        @keyframes pulse-alert {
+            0% { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 6px 20px rgba(239, 68, 68, 0.6); }
+            100% { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -84,8 +133,8 @@
                         <span id="gasPercentage">-- %</span>
                     </div>
                 </div>
-                <div id="gasStatus" class="px-4 py-2 rounded-full text-white font-medium bg-green-500">
-                    <i class="fas fa-check-circle mr-2"></i> --
+                <div id="gasStatus" class="status-pill px-4 py-2 rounded-full text-white font-medium bg-gray-500">
+                    <i class="fas fa-question-circle mr-2"></i>--
                 </div>
             </div>
         </div>
@@ -115,8 +164,8 @@
                 <div class="flex flex-col items-center justify-center h-full">
                     <div class="text-4xl font-bold text-gray-800 mb-2" id="batteryLevel">--%</div>
                 </div>
-                <div id="batteryStatus" class="mt-4 px-4 py-2 rounded-full text-white font-medium bg-green-500">
-                    <i class="fas fa-check-circle mr-2"></i> --
+                <div id="batteryStatus" class="status-pill mt-4 px-4 py-2 rounded-full text-white font-medium bg-gray-500">
+                    <i class="fas fa-question-circle mr-2"></i>--
                 </div>
             </div>
     </div>
@@ -124,7 +173,12 @@
     </div>
 
     <!-- Alerts -->
-    <div id="alertContainer" class="mb-6"></div>
+    <div id="alertContainer" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md"></div>
+
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="fixed bottom-4 right-4 px-4 py-2 rounded-lg text-white font-medium bg-gray-500">
+        <i class="fas fa-circle mr-2"></i>Connecting...
+    </div>
 </div>
 
 <script>
@@ -134,58 +188,168 @@
     const batteryStatus = document.getElementById('batteryStatus');
     const batteryLevel = document.getElementById('batteryLevel');
     const alertContainer = document.getElementById('alertContainer');
+    const connectionStatus = document.getElementById('connectionStatus');
 
     const socket = new WebSocket('wss://gasdetector.onrender.com/');
+    //const socket = new WebSocket('ws://localhost:3000/');
+
+    function updateGasStatus(status) {
+        gasStatus.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'pulse', 'bg-gray-500');
+        const statusLower = status.toLowerCase();
+        
+        if (statusLower === 'good') {
+            gasStatus.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Good`;
+            gasStatus.classList.add('bg-green-500');
+        } else if (statusLower === 'low') {
+            gasStatus.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> Low`;
+            gasStatus.classList.add('bg-yellow-500');
+        } else if (statusLower === 'critical') {
+            gasStatus.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Critical`;
+            gasStatus.classList.add('bg-red-500', 'pulse');
+        } else {
+            gasStatus.innerHTML = `<i class="fas fa-question-circle mr-2"></i> ${status}`;
+            gasStatus.classList.add('bg-gray-500');
+        }
+    }
+
+    function updateBatteryStatus(status) {
+        batteryStatus.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'pulse', 'bg-gray-500');
+        const statusLower = status.toLowerCase();
+        
+        if (statusLower === 'good') {
+            batteryStatus.innerHTML = `<i class="fas fa-check-circle mr-2"></i> Good`;
+            batteryStatus.classList.add('bg-green-500');
+        } else if (statusLower === 'low') {
+            batteryStatus.innerHTML = `<i class="fas fa-exclamation-triangle mr-2"></i> Low`;
+            batteryStatus.classList.add('bg-yellow-500');
+        } else if (statusLower === 'critical') {
+            batteryStatus.innerHTML = `<i class="fas fa-exclamation-circle mr-2"></i> Critical`;
+            batteryStatus.classList.add('bg-red-500', 'pulse');
+        } else {
+            batteryStatus.innerHTML = `<i class="fas fa-question-circle mr-2"></i> ${status}`;
+            batteryStatus.classList.add('bg-gray-500');
+        }
+    }
+
+    function updateAlerts(gasStatus, batteryStatus) {
+        const existingAlerts = alertContainer.querySelectorAll('.alert-item');
+        const gasStatusLower = gasStatus.toLowerCase();
+        const batteryStatusLower = batteryStatus.toLowerCase();
+        
+        // Remove existing alerts
+        existingAlerts.forEach(alert => {
+            alert.classList.add('alert-slide-out');
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.remove();
+                }
+            }, 300);
+        });
+        
+        // Wait for slide out animation to complete before showing new alerts
+        setTimeout(() => {
+            const alerts = [];
+            
+            if (gasStatusLower === 'low' || gasStatusLower === 'critical') {
+                alerts.push({
+                    type: gasStatusLower === 'critical' ? 'critical' : 'warning',
+                    message: `Gas level is ${gasStatusLower}!`,
+                    subMessage: gasStatusLower === 'critical' ? 'Refill your gas now' : 'Please monitor closely',
+                    icon: gasStatusLower === 'critical' ? 'fas fa-exclamation-circle' : 'fas fa-exclamation-triangle'
+                });
+            }
+            
+            if (batteryStatusLower === 'low' || batteryStatusLower === 'critical') {
+                alerts.push({
+                    type: batteryStatusLower === 'critical' ? 'critical' : 'warning',
+                    message: `Battery level is ${batteryStatusLower}!`,
+                    subMessage: batteryStatusLower === 'critical' ? 'Device may shutdown soon' : 'Consider charging device',
+                    icon: batteryStatusLower === 'critical' ? 'fas fa-battery-empty' : 'fas fa-battery-quarter'
+                });
+            }
+            
+            alerts.forEach((alert, index) => {
+                setTimeout(() => {
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = 'alert-item alert-slide-in mb-3 rounded-lg shadow-lg';
+                    
+                    if (alert.type === 'critical') {
+                        alertDiv.className += ' bg-red-50 border-l-4 border-red-500 alert-critical';
+                    } else {
+                        alertDiv.className += ' bg-yellow-50 border-l-4 border-yellow-500 alert-warning';
+                    }
+                    
+                    const iconColor = alert.type === 'critical' ? 'text-red-500' : 'text-yellow-500';
+                    const textColor = alert.type === 'critical' ? 'text-red-800' : 'text-yellow-800';
+                    const subTextColor = alert.type === 'critical' ? 'text-red-600' : 'text-yellow-600';
+                    
+                    alertDiv.innerHTML = `
+                        <div class="flex items-start p-4">
+                            <div class="flex-shrink-0">
+                                <i class="${alert.icon} ${iconColor} text-xl"></i>
+                            </div>
+                            <div class="ml-3 flex-1">
+                                <h3 class="text-sm font-bold ${textColor} uppercase tracking-wide">
+                                    ${alert.type === 'critical' ? 'CRITICAL ALERT' : 'WARNING'}
+                                </h3>
+                                <p class="mt-1 text-sm ${textColor} font-semibold">
+                                    ${alert.message}
+                                </p>
+                                <p class="mt-1 text-xs ${subTextColor}">
+                                    ${alert.subMessage}
+                                </p>
+                            </div>
+                            <button class="flex-shrink-0 ml-3 ${iconColor} hover:bg-gray-100 rounded-full p-1" 
+                                    onclick="this.parentElement.parentElement.remove()">
+                                <i class="fas fa-times text-sm"></i>
+                            </button>
+                        </div>
+                    `;
+                    
+                    alertContainer.appendChild(alertDiv);
+                }, index * 100); // Stagger the animations
+            });
+        }, 350);
+    }
 
     socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
+        try {
+            const data = JSON.parse(event.data);
+            console.log('Received data:', data);
 
-    gasWeight.textContent = `${data.weight.toFixed(1)} kg`;
-    gasPercentage.textContent = `${data.percentage}%`;
-    batteryLevel.textContent = `${data.battery}%`;
+            gasWeight.textContent = `${data.weight.toFixed(1)} kg`;
+            gasPercentage.textContent = `${data.percentage}%`;
+            batteryLevel.textContent = `${data.battery}%`;
+            updateGasStatus(data.status);
+            updateBatteryStatus(data.batteryStatus);
 
-    // Update status text and styling
-    gasStatus.innerHTML = `<i class="fas fa-check-circle mr-2"></i> ${data.status}`;
-    gasStatus.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500', 'pulse');
+            updateAlerts(data.status, data.batteryStatus);
 
-    if (data.status === 'normal') {
-        gasStatus.classList.add('bg-green-500');
-    } else if (data.status === 'low') {
-        gasStatus.classList.add('bg-yellow-500');
-    } else if (data.status === 'critical') {
-        gasStatus.classList.add('bg-red-500', 'pulse');
-    }
+        } catch (error) {
+            console.error('Error parsing WebSocket data:', error);
+        }
+    };
 
-    batteryStatus.innerHTML = `<i class="fas fa-check-circle mr-2"></i> ${data.batteryStatus}`;
-    batteryStatus.classList.remove('bg-green-500', 'bg-yellow-500', 'bg-red-500');
+    socket.onopen = () => {
+        console.log('Connected to WebSocket server');
+        connectionStatus.innerHTML = '<i class="fas fa-circle mr-2"></i>Connected';
+        connectionStatus.classList.remove('bg-gray-500');
+        connectionStatus.classList.add('bg-green-500');
+    };
 
-    if (data.batteryStatus === 'good') {
-    batteryStatus.classList.add('bg-green-500');
-    } else if (data.batteryStatus === 'low') {
-    batteryStatus.classList.add('bg-yellow-500');
-    } else if (data.batteryStatus === 'critical') {
-    batteryStatus.classList.add('bg-red-500', 'pulse');
-    }
+    socket.onclose = () => {
+        console.log('Disconnected from WebSocket server');
+        connectionStatus.innerHTML = '<i class="fas fa-circle mr-2"></i>Disconnected';
+        connectionStatus.classList.remove('bg-green-500');
+        connectionStatus.classList.add('bg-red-500');
+    };
 
-
-    // Optional alert
-    alertContainer.innerHTML = '';
-    if (data.status === 'low' || data.status === 'critical') {
-        const alert = document.createElement('div');
-        alert.textContent = `Warning: Gas level is ${data.status}!`;
-        alert.className = 'alert'; // style this if desired
-        alertContainer.appendChild(alert);
-    }
-};
-
-
-  socket.onopen = () => {
-    console.log('Connected to WebSocket server');
-  };
-
-  socket.onerror = (err) => {
-    console.error('WebSocket error:', err);
-  };
+    socket.onerror = (err) => {
+        console.error('WebSocket error:', err);
+        connectionStatus.innerHTML = '<i class="fas fa-circle mr-2"></i>Connection Error';
+        connectionStatus.classList.remove('bg-green-500');
+        connectionStatus.classList.add('bg-red-500');
+    };
 </script>
 </body>
 </html>
