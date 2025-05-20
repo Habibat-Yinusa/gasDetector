@@ -56,7 +56,7 @@ const updateHandler: express.RequestHandler = (req, res) => {
   }
 
   let statusToString: string
-
+  
   if (status === 0) {
     statusToString = 'Critical'
   } else if ( status === 1 ) {
@@ -68,7 +68,7 @@ const updateHandler: express.RequestHandler = (req, res) => {
   }
 
   latestData = {
-    weight,
+    weight: (weight/1000),
     percentage,
     batteryVoltage,
     status: statusToString,
