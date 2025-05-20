@@ -6,7 +6,7 @@ import WebSocket, { WebSocketServer } from 'ws';
 interface SensorData {
   weight: number;
   percentage: number;
-  battery: number;
+  batteryVoltage: number;
   status: string;
   batteryStatus: string;
 }
@@ -22,13 +22,13 @@ const wss = new WebSocketServer({ server });
 let latestData: SensorData = {
   weight: 0,
   percentage: 0,
-  battery: 0,
+  batteryVoltage: 0,
   status: '', 
   batteryStatus: '',
 };
 
 const computeStatus = (percentage: number): string => {
-  return percentage < 15 ? 'Critical' : percentage < 30 ? 'Low' : 'Good';
+  return percentage < 7 ? 'Critical' : percentage < 30 ? 'Low' : 'Good';
 }
 
 wss.on('connection', (ws: WebSocket) => {
@@ -45,12 +45,12 @@ wss.on('connection', (ws: WebSocket) => {
 });
 
 const updateHandler: express.RequestHandler = (req, res) => {
-    const { weight, percentage, battery } = req.body;
+    const { weight, percentage, batteryVoltage, status } = req.body;
 
   if (
     typeof weight !== 'number' ||
     typeof percentage !== 'number' ||
-    typeof battery !== 'number'
+    typeof batteryVoltage !== 'number'
   ) {
     return res.status(400).json({ error: 'Invalid sensor data format' });
   }
@@ -58,9 +58,9 @@ const updateHandler: express.RequestHandler = (req, res) => {
   latestData = {
     weight,
     percentage,
-    battery,
-    status: computeStatus(percentage),
-    batteryStatus: computeStatus(battery),
+    batteryVoltage,
+    status,
+    batteryStatus: computeStatus(batteryVoltage),
   };
 
   wss.clients.forEach((client) => {
