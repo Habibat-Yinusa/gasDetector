@@ -55,11 +55,23 @@ const updateHandler: express.RequestHandler = (req, res) => {
     return res.status(400).json({ error: 'Invalid sensor data format' });
   }
 
+  let statusToString: string
+
+  if (status === 0) {
+    statusToString = 'Critical'
+  } else if ( status === 1 ) {
+    statusToString = 'Low'
+  } else if (status === 2) {
+    statusToString = 'Good'
+  } else {
+    statusToString = 'Unknown'
+  }
+
   latestData = {
     weight,
     percentage,
     batteryVoltage,
-    status,
+    status: statusToString,
     batteryStatus: computeStatus(batteryVoltage),
   };
 
