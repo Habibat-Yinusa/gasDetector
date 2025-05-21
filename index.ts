@@ -68,7 +68,7 @@ const updateHandler: express.RequestHandler = (req, res) => {
   }
 
   latestData = {
-    weight: (weight/1000),
+    weight: (weight),
     percentage,
     batteryVoltage,
     status: statusToString,
